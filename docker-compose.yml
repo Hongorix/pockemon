@@ -10,8 +10,9 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
+      target: backend
     container_name: pockemon-backend
     depends_on:
       - mongodb
@@ -21,15 +22,12 @@ services:
       CORS_ORIGIN: http://localhost:5173
     ports:
       - '3000:3000'
-    command: npm run start:dev
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
 
   frontend:
     build:
-      context: ./frontend
+      context: .
       dockerfile: Dockerfile
+      target: frontend
     container_name: pockemon-frontend
     depends_on:
       - backend
@@ -37,10 +35,6 @@ services:
       VITE_API_URL: http://localhost:3000
     ports:
       - '5173:5173'
-    command: npm run dev -- --host 0.0.0.0 --port 5173
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
 
 volumes:
   mongo_data:

@@ -87,8 +87,10 @@ Uploaded files are validated on the client before being loaded into the Create p
 ## Run locally with Docker (recommended)
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
+
+This setup uses a single root `Dockerfile` with dedicated build targets for backend and frontend.
 
 Apps:
 - Frontend: [http://localhost:5173](http://localhost:5173)
