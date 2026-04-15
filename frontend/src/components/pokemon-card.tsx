@@ -12,7 +12,7 @@ export const PokemonCard = ({ pokemon, selectedCount, onAdd, onRemove }: Pokemon
     <article className="comic-card">
       <div className="flex items-center justify-between">
         <p className="comic-chip">#{pokemon.id}</p>
-        <p className="font-mono text-sm">{pokemon.weight} hg</p>
+        <p className="comic-chip">{pokemon.weight} hg</p>
       </div>
       <div className="my-4 grid place-items-center rounded-xl border-4 border-black bg-white/70 p-3">
         {pokemon.imageUrl ? (
@@ -28,7 +28,13 @@ export const PokemonCard = ({ pokemon, selectedCount, onAdd, onRemove }: Pokemon
         )}
       </div>
       <h3 className="comic-name">{pokemon.name}</h3>
-      <p className="text-sm uppercase tracking-wide">{pokemon.species}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {pokemon.types.map((type) => (
+          <span key={type} className="comic-chip uppercase">
+            {type}
+          </span>
+        ))}
+      </div>
       <div className="mt-4 flex items-center justify-between">
         <button className="comic-mini-btn" type="button" onClick={onRemove} disabled={selectedCount < 1}>
           -

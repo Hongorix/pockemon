@@ -116,6 +116,7 @@ export const CreateListPage = () => {
             id: item.pokemonId,
             name: item.name,
             species: item.species,
+            types: [],
             weight: item.weight,
             imageUrl: item.imageUrl ?? null,
           },

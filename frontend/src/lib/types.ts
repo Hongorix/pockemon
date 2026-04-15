@@ -2,6 +2,7 @@ export type PokemonCatalogItem = {
   id: number
   name: string
   species: string
+  types: string[]
   weight: number
   imageUrl: string | null
 }

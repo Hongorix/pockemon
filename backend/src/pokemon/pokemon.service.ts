@@ -11,6 +11,7 @@ type PokemonDetailResponse = {
   id: number;
   name: string;
   species: { name: string };
+  types: Array<{ slot: number; type: { name: string } }>;
   weight: number;
   sprites: { front_default: string | null };
 };
@@ -19,6 +20,7 @@ type PokemonCard = {
   id: number;
   name: string;
   species: string;
+  types: string[];
   weight: number;
   imageUrl: string | null;
 };
@@ -106,6 +108,9 @@ export class PokemonService {
       id: detail.id,
       name: detail.name,
       species: detail.species.name,
+      types: detail.types
+        .sort((a, b) => a.slot - b.slot)
+        .map((entry) => entry.type.name),
       weight: detail.weight,
       imageUrl: detail.sprites.front_default,
     };
