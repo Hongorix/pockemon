@@ -1,9 +1,43 @@
 import { Link } from '@tanstack/react-router'
-import { useCollections, useDeleteCollection } from '../lib/hooks'
+import type { ChangeEvent } from 'react'
+import { useState } from 'react'
+import { ZodError } from 'zod'
+import { parseCollectionFile } from '../lib/file-format'
+import { useCollections, useCreateCollection } from '../lib/hooks'
 
 export const HomePage = () => {
   const { data: collections, isLoading, isError } = useCollections()
-  const deleteCollection = useDeleteCollection()
+  const createCollection = useCreateCollection()
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importSuccess, setImportSuccess] = useState<string | null>(null)
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setImportError(null)
+    setImportSuccess(null)
+
+    try {
+      const text = await file.text()
+      const parsed = parseCollectionFile(JSON.parse(text))
+      await createCollection.mutateAsync({
+        name: parsed.name,
+        items: parsed.items,
+      })
+      setImportSuccess(`List ${parsed.name} imported successfully.`)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        setImportError(`Invalid file: ${error.issues[0]?.message ?? 'unknown error'}`)
+      } else {
+        const details = (error as Error & { details?: { violations?: Array<{ message: string }> } }).details
+        const serverMessage = details?.violations?.map((item) => item.message).join(' ')
+        setImportError(serverMessage ?? (error instanceof Error ? error.message : 'Import failed.'))
+      }
+    } finally {
+      event.currentTarget.value = ''
+    }
+  }
 
   return (
     <main className="space-y-6">
@@ -14,10 +48,25 @@ export const HomePage = () => {
             Build a squad, obey the 1300hg rule, and keep at least 3 distinct species.
           </p>
         </div>
-        <Link to="/create" className="comic-button bg-lime-300">
-          Create New List
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="comic-button cursor-pointer bg-sky-300">
+            Import list
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              disabled={createCollection.isPending}
+              onChange={handleImportFile}
+            />
+          </label>
+          <Link to="/create" className="comic-button bg-lime-300">
+            Create New List
+          </Link>
+        </div>
       </section>
+
+      {importSuccess ? <p className="comic-success">{importSuccess}</p> : null}
+      {importError ? <p className="comic-warning">{importError}</p> : null}
 
       {isLoading ? <p className="comic-panel">Loading saved lists...</p> : null}
       {isError ? <p className="comic-warning">Could not load saved lists.</p> : null}
@@ -32,9 +81,14 @@ export const HomePage = () => {
         {collections?.map((collection) => (
           <article
             key={collection._id}
-            className="comic-panel flex flex-col gap-3 transition-transform hover:-translate-y-1"
+            className="comic-panel transition-transform hover:-translate-y-1"
           >
-            <Link to="/lists/$listId" params={{ listId: collection._id }} className="block min-w-0 flex-1">
+            <Link
+              from="/"
+              to="/lists/$listId"
+              params={{ listId: collection._id }}
+              className="block min-w-0"
+            >
               <h3 className="comic-name text-2xl">{collection.name}</h3>
               <p className="mt-1 text-sm">Pokemon count: {collection.items.length}</p>
               <p className="text-sm">Total weight: {collection.totalWeight} hg</p>
@@ -42,19 +96,6 @@ export const HomePage = () => {
                 {new Date(collection.createdAt).toLocaleString()}
               </p>
             </Link>
-            <div className="flex justify-end border-t-4 border-black pt-3">
-              <button
-                type="button"
-                className="comic-button bg-red-400 py-1 px-3 text-sm"
-                disabled={deleteCollection.isPending}
-                onClick={() => {
-                  if (!confirm(`Delete list "${collection.name}"?`)) return
-                  void deleteCollection.mutateAsync(collection._id)
-                }}
-              >
-                Delete
-              </button>
-            </div>
           </article>
         ))}
       </section>
