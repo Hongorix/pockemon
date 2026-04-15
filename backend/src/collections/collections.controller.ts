@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { CollectionsService } from './collections.service';
 
@@ -19,5 +19,10 @@ export class CollectionsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.collectionsService.findOne(id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.collectionsService.remove(id);
   }
 }

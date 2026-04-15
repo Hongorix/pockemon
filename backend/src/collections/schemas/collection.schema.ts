@@ -19,6 +19,9 @@ export class CollectionItem {
 
   @Prop()
   imageUrl?: string;
+
+  @Prop({ type: [String], default: [] })
+  types: string[];
 }
 
 export const CollectionItemSchema =

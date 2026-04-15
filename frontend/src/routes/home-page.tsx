@@ -1,8 +1,9 @@
 import { Link } from '@tanstack/react-router'
-import { useCollections } from '../lib/hooks'
+import { useCollections, useDeleteCollection } from '../lib/hooks'
 
 export const HomePage = () => {
   const { data: collections, isLoading, isError } = useCollections()
+  const deleteCollection = useDeleteCollection()
 
   return (
     <main className="space-y-6">
@@ -29,19 +30,32 @@ export const HomePage = () => {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {collections?.map((collection) => (
-          <Link
+          <article
             key={collection._id}
-            to="/lists/$listId"
-            params={{ listId: collection._id }}
-            className="comic-panel block transition-transform hover:-translate-y-1"
+            className="comic-panel flex flex-col gap-3 transition-transform hover:-translate-y-1"
           >
-            <h3 className="comic-name text-2xl">{collection.name}</h3>
-            <p className="mt-1 text-sm">Pokemon count: {collection.items.length}</p>
-            <p className="text-sm">Total weight: {collection.totalWeight} hg</p>
-            <p className="mt-3 text-xs uppercase tracking-widest">
-              {new Date(collection.createdAt).toLocaleString()}
-            </p>
-          </Link>
+            <Link to="/lists/$listId" params={{ listId: collection._id }} className="block min-w-0 flex-1">
+              <h3 className="comic-name text-2xl">{collection.name}</h3>
+              <p className="mt-1 text-sm">Pokemon count: {collection.items.length}</p>
+              <p className="text-sm">Total weight: {collection.totalWeight} hg</p>
+              <p className="mt-3 text-xs uppercase tracking-widest">
+                {new Date(collection.createdAt).toLocaleString()}
+              </p>
+            </Link>
+            <div className="flex justify-end border-t-4 border-black pt-3">
+              <button
+                type="button"
+                className="comic-button bg-red-400 py-1 px-3 text-sm"
+                disabled={deleteCollection.isPending}
+                onClick={() => {
+                  if (!confirm(`Delete list "${collection.name}"?`)) return
+                  void deleteCollection.mutateAsync(collection._id)
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </article>
         ))}
       </section>
     </main>

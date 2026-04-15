@@ -29,6 +29,11 @@ export class CreateCollectionItemDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  types?: string[];
 }
 
 export class CreateCollectionDto {

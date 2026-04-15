@@ -41,3 +41,15 @@ export const useCreateCollection = () => {
     },
   })
 }
+
+export const useDeleteCollection = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: api.deleteCollection,
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: collectionKeys.all })
+      void queryClient.removeQueries({ queryKey: collectionKeys.detail(id) })
+    },
+  })
+}

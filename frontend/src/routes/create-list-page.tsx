@@ -20,6 +20,7 @@ const flattenSelections = (selection: SelectedState): CollectionItem[] => {
       species: entry.pokemon.species,
       weight: entry.pokemon.weight,
       imageUrl: entry.pokemon.imageUrl,
+      types: entry.pokemon.types,
     })),
   )
 }
@@ -141,7 +142,7 @@ export const CreateListPage = () => {
             id: item.pokemonId,
             name: item.name,
             species: item.species,
-            types: [],
+            types: item.types ?? [],
             weight: item.weight,
             imageUrl: item.imageUrl ?? null,
           },

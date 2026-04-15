@@ -54,4 +54,14 @@ export class CollectionsService {
 
     return collection;
   }
+
+  async remove(id: string) {
+    const result = await this.collectionModel.findByIdAndDelete(id).exec();
+
+    if (!result) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    return { deleted: true, id };
+  }
 }

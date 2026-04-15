@@ -7,6 +7,7 @@ const collectionItemSchema = z.object({
   species: z.string().min(1),
   weight: z.number().int().positive(),
   imageUrl: z.string().nullable().optional(),
+  types: z.array(z.string()).optional(),
 })
 
 const collectionExportSchema = z.object({

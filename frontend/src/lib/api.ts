@@ -18,7 +18,16 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
     throw error
   }
 
-  return (await response.json()) as T
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  const raw = await response.text()
+  if (!raw) {
+    return undefined as T
+  }
+
+  return JSON.parse(raw) as T
 }
 
 export const api = {
@@ -28,6 +37,10 @@ export const api = {
     request<CollectionRecord>('/collections', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+  deleteCollection: (id: string) =>
+    request<{ deleted: boolean; id: string }>(`/collections/${id}`, {
+      method: 'DELETE',
     }),
   getPokemonCatalog: (params: { page: number; limit: number; search?: string }) => {
     const query = new URLSearchParams({

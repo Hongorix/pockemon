@@ -20,6 +20,7 @@ export type CollectionItem = {
   species: string
   weight: number
   imageUrl?: string | null
+  types?: string[]
 }
 
 export type CollectionRecord = {
