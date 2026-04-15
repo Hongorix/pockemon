@@ -49,11 +49,17 @@ export const ListDetailPage = () => {
               <p className="comic-chip">#{item.pokemonId}</p>
               <p className="font-mono text-sm">{item.weight} hg</p>
             </div>
-            <div className="my-4 grid place-items-center rounded-xl border-4 border-black bg-white/70 p-3">
+            <div className="my-4 grid place-items-center rounded-xl border-4 border-black bg-white/70 p-4">
               {item.imageUrl ? (
-                <img src={item.imageUrl} alt={item.name} width={100} height={100} className="h-24 w-24 object-contain" />
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  width={200}
+                  height={200}
+                  className="h-48 w-48 object-contain"
+                />
               ) : (
-                <div className="h-24 w-24 bg-zinc-200" />
+                <div className="h-48 w-48 bg-zinc-200" />
               )}
             </div>
             <h3 className="comic-name text-xl">{item.name}</h3>

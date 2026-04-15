@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
 import type { ChangeEvent } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ZodError } from 'zod'
 import { PokemonCard } from '../components/pokemon-card'
 import { parseCollectionFile } from '../lib/file-format'
@@ -47,6 +47,21 @@ export const CreateListPage = () => {
     [selectedItems],
   )
 
+  const [selectionPanelOpen, setSelectionPanelOpen] = useState(false)
+
+  const selectionRows = useMemo(() => {
+    const rows: { pokemon: PokemonCatalogItem; rowKey: string }[] = []
+    for (const [pokemonId, entry] of Object.entries(selection)) {
+      for (let i = 0; i < entry.count; i++) {
+        rows.push({
+          pokemon: entry.pokemon,
+          rowKey: `${pokemonId}-${i}`,
+        })
+      }
+    }
+    return rows
+  }, [selection])
+
   const updateSelection = (pokemon: PokemonCatalogItem, delta: number) => {
     setSelection((current) => {
       const existing = current[pokemon.id]
@@ -67,6 +82,16 @@ export const CreateListPage = () => {
       }
     })
   }
+
+  const removeSelectedRow = (pokemon: PokemonCatalogItem) => {
+    updateSelection(pokemon, -1)
+  }
+
+  useEffect(() => {
+    if (selectedItems.length === 0) {
+      setSelectionPanelOpen(false)
+    }
+  }, [selectedItems.length])
 
   const handleSearch = () => {
     setPage(1)
@@ -91,7 +116,7 @@ export const CreateListPage = () => {
         name: name.trim(),
         items: selectedItems,
       })
-      await navigate({ to: '/lists/$listId', params: { listId: created._id } })
+      await navigate({ href: `/lists/${created._id}` })
     } catch (error) {
       const details = (error as Error & { details?: { violations?: Array<{ message: string }> } }).details
       const serverMessage = details?.violations?.map((item) => item.message).join(' ')
@@ -174,11 +199,97 @@ export const CreateListPage = () => {
           </button>
         </div>
         <div className="grid gap-2 md:grid-cols-3">
-          <p className="comic-chip">Distinct species: {speciesCount} / {MIN_SPECIES}</p>
-          <p className="comic-chip">Total weight: {totalWeight} / {MAX_WEIGHT} hg</p>
-          <p className="comic-chip">Selected Pokemon: {selectedItems.length}</p>
+          <p className="comic-chip flex w-full flex-wrap items-center justify-between">Distinct species: {speciesCount} / {MIN_SPECIES}</p>
+          <p className="comic-chip flex w-full flex-wrap items-center justify-between">Total weight: {totalWeight} / {MAX_WEIGHT} hg</p>
+          <div className="comic-chip flex min-h-9 w-full flex-wrap items-center justify-between gap-2">
+            <span className="min-w-0">Selected Pokemon: {selectedItems.length}</span>
+            <button
+              type="button"
+              className="shrink-0 rounded-md border-2 border-black bg-[#ff8a00] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow-[2px_2px_0_#000] transition-transform hover:-translate-x-px hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+              disabled={selectedItems.length === 0}
+              onClick={() => setSelectionPanelOpen(true)}
+            >
+              View
+            </button>
+          </div>
         </div>
       </section>
+
+      {selectionPanelOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+          role="presentation"
+          onClick={() => setSelectionPanelOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setSelectionPanelOpen(false)
+          }}
+        >
+          <section
+            className="comic-panel max-h-[min(80vh,560px)] w-full max-w-lg overflow-hidden border-4 border-black shadow-[8px_8px_0_#000]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="selected-pokemon-heading"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b-4 border-black pb-3">
+              <h3 id="selected-pokemon-heading" className="comic-subtitle text-xl">
+                Selected Pokemon
+              </h3>
+              <button
+                type="button"
+                className="comic-button bg-zinc-200 py-1 px-3 text-sm"
+                onClick={() => setSelectionPanelOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            {selectionRows.length === 0 ? (
+              <p className="text-sm font-bold">No Pokemon selected.</p>
+            ) : (
+              <ul className="max-h-[min(60vh,420px)] space-y-2 overflow-y-auto pr-1">
+                {selectionRows.map(({ pokemon, rowKey }) => (
+                  <li
+                    key={rowKey}
+                    className="flex items-center gap-3 rounded-xl border-4 border-black bg-white/90 p-2"
+                  >
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 border-black bg-zinc-100">
+                      {pokemon.imageUrl ? (
+                        <img
+                          src={pokemon.imageUrl}
+                          alt=""
+                          width={48}
+                          height={48}
+                          className="h-full w-full object-contain"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-black capitalize">{pokemon.name.replace(/-/g, ' ')}</p>
+                      <p className="text-xs font-bold text-zinc-700">{pokemon.weight} hg</p>
+                      {pokemon.types.length > 0 ? (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {pokemon.types.map((type) => (
+                            <span key={type} className="comic-chip py-0 text-[10px] uppercase">
+                              {type}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      className="comic-button shrink-0 bg-red-400 py-1 px-2 text-xs"
+                      onClick={() => removeSelectedRow(pokemon)}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      ) : null}
 
       {violations.length > 0 ? (
         <section className="comic-warning">
