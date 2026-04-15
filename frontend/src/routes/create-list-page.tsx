@@ -1,9 +1,11 @@
 import { useNavigate } from '@tanstack/react-router'
+import { useQueries } from '@tanstack/react-query'
 import type { ChangeEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { ZodError } from 'zod'
 import { PokemonCard } from '../components/pokemon-card'
 import { parseCollectionFile } from '../lib/file-format'
+import { api } from '../lib/api'
 import { useCreateCollection, usePokemonCatalog } from '../lib/hooks'
 import { evaluateCollectionRules, MAX_WEIGHT, MIN_SPECIES } from '../lib/rules'
 import type { CollectionItem, PokemonCatalogItem } from '../lib/types'
@@ -37,6 +39,12 @@ export const CreateListPage = () => {
   const { data, isLoading, isError } = usePokemonCatalog(page, PAGE_SIZE, committedSearch)
   const createCollection = useCreateCollection()
 
+  const totalPages = useMemo(() => {
+    const size = data?.limit ?? PAGE_SIZE
+    if (!data) return 1
+    return Math.max(1, Math.ceil(data.count / size))
+  }, [data])
+
   const selectedItems = useMemo(() => flattenSelections(selection), [selection])
   const violations = useMemo(() => evaluateCollectionRules(selectedItems), [selectedItems])
   const totalWeight = useMemo(
@@ -62,6 +70,32 @@ export const CreateListPage = () => {
     }
     return rows
   }, [selection])
+
+  const idsNeedingImage = useMemo(() => {
+    const ids = new Set<number>()
+    for (const row of selectionRows) {
+      if (!row.pokemon.imageUrl) ids.add(row.pokemon.id)
+    }
+    return [...ids]
+  }, [selectionRows])
+
+  const imageLookups = useQueries({
+    queries: idsNeedingImage.map((id) => ({
+      queryKey: ['pokemon', 'by-id', id] as const,
+      queryFn: () => api.getPokemonById(id),
+      enabled: idsNeedingImage.length > 0,
+      staleTime: 60 * 60 * 1000,
+    })),
+  })
+
+  const resolvedImageUrlById = useMemo(() => {
+    const map = new Map<number, string | null>()
+    idsNeedingImage.forEach((id, index) => {
+      const url = imageLookups[index]?.data?.imageUrl ?? null
+      if (url) map.set(id, url)
+    })
+    return map
+  }, [idsNeedingImage, imageLookups])
 
   const updateSelection = (pokemon: PokemonCatalogItem, delta: number) => {
     setSelection((current) => {
@@ -168,24 +202,24 @@ export const CreateListPage = () => {
     <main className="space-y-6">
       <section className="comic-panel space-y-4">
         <h2 className="comic-subtitle">Create List</h2>
-        <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr]">
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="comic-input"
-            placeholder="List name"
-          />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="comic-input"
             placeholder="Search by Pokemon name"
           />
-          <button type="button" className="comic-button" onClick={handleSearch}>
+          <button type="button" className="comic-button shrink-0" onClick={handleSearch}>
             Search
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[2fr_1fr_1fr]">
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="comic-input min-w-0"
+            placeholder="List name"
+          />
           <label className="comic-button cursor-pointer bg-cyan-300">
             Upload Saved File
             <input type="file" accept="application/json" className="hidden" onChange={handleUpload} />
@@ -248,15 +282,18 @@ export const CreateListPage = () => {
               <p className="text-sm font-bold">No Pokemon selected.</p>
             ) : (
               <ul className="max-h-[min(60vh,420px)] space-y-2 overflow-y-auto pr-1">
-                {selectionRows.map(({ pokemon, rowKey }) => (
+                {selectionRows.map(({ pokemon, rowKey }) => {
+                  const rowImageUrl =
+                    pokemon.imageUrl ?? resolvedImageUrlById.get(pokemon.id) ?? null
+                  return (
                   <li
                     key={rowKey}
                     className="flex items-center gap-3 rounded-xl border-4 border-black bg-white/90 p-2"
                   >
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 border-black bg-zinc-100">
-                      {pokemon.imageUrl ? (
+                      {rowImageUrl ? (
                         <img
-                          src={pokemon.imageUrl}
+                          src={rowImageUrl}
                           alt=""
                           width={48}
                           height={48}
@@ -285,7 +322,8 @@ export const CreateListPage = () => {
                       Remove
                     </button>
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             )}
           </section>
@@ -316,24 +354,50 @@ export const CreateListPage = () => {
         ))}
       </section>
 
-      <section className="comic-panel flex items-center justify-between">
-        <button
-          type="button"
-          className="comic-button"
-          onClick={() => setPage((current) => Math.max(current - 1, 1))}
-          disabled={page === 1 || Boolean(committedSearch)}
-        >
-          Previous
-        </button>
-        <p className="font-black">Page {page}</p>
-        <button
-          type="button"
-          className="comic-button"
-          onClick={() => setPage((current) => current + 1)}
-          disabled={Boolean(committedSearch) || !data || data.items.length < PAGE_SIZE}
-        >
-          Next
-        </button>
+      <section className="comic-panel flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+          <button
+            type="button"
+            className="comic-button"
+            aria-label="First page"
+            onClick={() => setPage(1)}
+            disabled={page <= 1 || !data}
+          >
+            First
+          </button>
+          <button
+            type="button"
+            className="comic-button"
+            aria-label="Previous page"
+            onClick={() => setPage((current) => Math.max(current - 1, 1))}
+            disabled={page <= 1 || !data}
+          >
+            Previous
+          </button>
+        </div>
+        <p className="text-center font-black">
+          Page {data ? page : '—'} of {data ? totalPages : '—'}
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+          <button
+            type="button"
+            className="comic-button"
+            aria-label="Next page"
+            onClick={() => setPage((current) => current + 1)}
+            disabled={!data || page >= totalPages}
+          >
+            Next
+          </button>
+          <button
+            type="button"
+            className="comic-button"
+            aria-label="Last page"
+            onClick={() => setPage(totalPages)}
+            disabled={!data || page >= totalPages}
+          >
+            Last
+          </button>
+        </div>
       </section>
     </main>
   )

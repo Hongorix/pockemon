@@ -26,11 +26,29 @@ export const ListDetailPage = () => {
     return [...names]
   }, [collectionItems])
 
+  const idsNeedingImage = useMemo(() => {
+    if (!collectionItems?.length) return []
+    const ids = new Set<number>()
+    for (const item of collectionItems) {
+      if (!item.imageUrl) ids.add(item.pokemonId)
+    }
+    return [...ids]
+  }, [collectionItems])
+
   const typeLookups = useQueries({
     queries: namesNeedingTypes.map((name) => ({
       queryKey: ['pokemon', 'type-lookup', name] as const,
       queryFn: () => api.getPokemonCatalog({ page: 1, limit: 1, search: name }),
       enabled: Boolean(collection) && namesNeedingTypes.length > 0,
+      staleTime: 60 * 60 * 1000,
+    })),
+  })
+
+  const imageLookups = useQueries({
+    queries: idsNeedingImage.map((id) => ({
+      queryKey: ['pokemon', 'by-id', id] as const,
+      queryFn: () => api.getPokemonById(id),
+      enabled: Boolean(collection) && idsNeedingImage.length > 0,
       staleTime: 60 * 60 * 1000,
     })),
   })
@@ -43,6 +61,15 @@ export const ListDetailPage = () => {
     })
     return map
   }, [namesNeedingTypes, typeLookups])
+
+  const resolvedImageUrlById = useMemo(() => {
+    const map = new Map<number, string | null>()
+    idsNeedingImage.forEach((id, index) => {
+      const url = imageLookups[index]?.data?.imageUrl ?? null
+      if (url) map.set(id, url)
+    })
+    return map
+  }, [idsNeedingImage, imageLookups])
 
   const handleDownload = () => {
     if (!collection) return
@@ -99,6 +126,7 @@ export const ListDetailPage = () => {
         {collection.items.map((item, index) => {
           const types =
             item.types?.length ? item.types : (resolvedTypesByName.get(item.name) ?? [])
+          const imageUrl = item.imageUrl ?? resolvedImageUrlById.get(item.pokemonId) ?? null
           const showSpecies = !speciesDuplicatesName(item)
 
           return (
@@ -108,9 +136,9 @@ export const ListDetailPage = () => {
                 <p className="font-mono text-sm">{item.weight} hg</p>
               </div>
               <div className="my-4 grid place-items-center rounded-xl border-4 border-black bg-white/70 p-4">
-                {item.imageUrl ? (
+                {imageUrl ? (
                   <img
-                    src={item.imageUrl}
+                    src={imageUrl}
                     alt={item.name}
                     width={200}
                     height={200}

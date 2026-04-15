@@ -1,4 +1,9 @@
-import type { CollectionItem, CollectionRecord, PokemonListResponse } from './types'
+import type {
+  CollectionItem,
+  CollectionRecord,
+  PokemonCatalogItem,
+  PokemonListResponse,
+} from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -54,4 +59,5 @@ export const api = {
 
     return request<PokemonListResponse>(`/pokemon?${query.toString()}`)
   },
+  getPokemonById: (id: number) => request<PokemonCatalogItem>(`/pokemon/by-id/${id}`),
 }
